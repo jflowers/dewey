@@ -357,7 +357,7 @@ synthesis:
   region: us-east5
 ```
 
-Vertex providers use `golang.org/x/oauth2/google` application-default credentials. If no provider is specified, defaults to Ollama.
+Vertex providers use `golang.org/x/oauth2/google` application-default credentials. If no provider is specified, defaults to Ollama. The `region` field accepts any GCP region (e.g., `us-east5`, `us-central1`) or `global` to route requests to the nearest available region.
 
 **Embedding endpoint resolution** (highest to lowest precedence):
 1. `DEWEY_EMBEDDING_ENDPOINT` env var (app-specific override)

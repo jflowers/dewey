@@ -92,9 +92,13 @@ func NewVertexSynthesizer(project, region, model string) (*VertexSynthesizer, er
 
 // rawPredictURL builds the Vertex AI rawPredict endpoint URL for Anthropic models.
 func (v *VertexSynthesizer) rawPredictURL() string {
+	host := v.region + "-aiplatform.googleapis.com"
+	if v.region == "global" {
+		host = "aiplatform.googleapis.com"
+	}
 	return fmt.Sprintf(
-		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:rawPredict",
-		v.region, v.project, v.region, v.model,
+		"https://%s/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:rawPredict",
+		host, v.project, v.region, v.model,
 	)
 }
 

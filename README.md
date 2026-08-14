@@ -599,7 +599,7 @@ Vertex AI requires Google Cloud application-default credentials:
 gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform
 ```
 
-Set `project` and `region` in your config to match your GCP setup. Vertex AI embedding models (e.g., `text-embedding-005`) and Claude synthesis models (e.g., `claude-sonnet-4-6`) must be enabled in your GCP project.
+Set `project` and `region` in your config to match your GCP setup. Use a regional endpoint (e.g., `us-east5`, `us-central1`) or `global` to route requests to the nearest available region. Vertex AI embedding models (e.g., `text-embedding-005`) and Claude synthesis models (e.g., `claude-sonnet-4-6`) must be enabled in your GCP project.
 
 **Note**: Switching embedding providers changes vector dimensions. Run `dewey reindex` after changing the embedding model.
 

@@ -95,9 +95,13 @@ func NewVertexEmbedder(project, region, model string) (*VertexEmbedder, error) {
 
 // predictURL builds the Vertex AI prediction endpoint URL.
 func (v *VertexEmbedder) predictURL() string {
+	host := v.region + "-aiplatform.googleapis.com"
+	if v.region == "global" {
+		host = "aiplatform.googleapis.com"
+	}
 	return fmt.Sprintf(
-		"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:predict",
-		v.region, v.project, v.region, v.model,
+		"https://%s/v1/projects/%s/locations/%s/publishers/google/models/%s:predict",
+		host, v.project, v.region, v.model,
 	)
 }
 
