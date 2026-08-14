@@ -1,4 +1,5 @@
 <!-- spec-review: passed -->
+<!-- code-review: passed -->
 <!--
   [P] marks tasks eligible for parallel execution.
   Add [P] when a task: (a) touches different files from
