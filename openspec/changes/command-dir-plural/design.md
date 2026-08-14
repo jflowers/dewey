@@ -13,13 +13,14 @@ Affected source locations:
 - Update `dewey init` to scaffold slash commands into `.opencode/commands/` (plural)
 - Add idempotent migration logic to move existing Dewey slash commands from old to new directory
 - Update all tests and comments to reflect the new path
-- Delete the stale `.opencode/command/` directory from the repository
+- ~~Delete `.opencode/command/` from the repository~~ — verified not tracked in git; already cleaned up
 
 ### Non-Goals
 - Modifying the `/uf.init` migration logic (Step 0) — that handles the broader UF ecosystem migration and remains valid
 - Changing any MCP tool behavior
 - Modifying the `deweySlashCommands` map contents (only the target path changes)
 - Updating old spec documents that reference `.opencode/command/` — those are historical artifacts
+- Updating `.opencode/commands/gaze-fix.md` stale path references (lines 51, 67 reference `.opencode/command/`) — that file is managed by `/uf.init`, not by `dewey init`
 
 ## Decisions
 
@@ -41,11 +42,9 @@ After migration, if `.opencode/command/` is empty, it is removed. If it still co
 
 **Rationale**: Clean up what Dewey created without affecting other tools' files. Composability First requires Dewey not to delete artifacts it doesn't own.
 
-### D4: Delete `.opencode/command/` from repository
+### ~~D4: Delete `.opencode/command/` from repository~~ (Withdrawn)
 
-The stale `.opencode/command/` directory (14 files) is deleted from version control. These files are duplicates of content that already exists in `.opencode/commands/` or were scaffolded there by `dewey init` writing to the wrong path.
-
-**Rationale**: Zero-Waste Mandate — no orphaned files.
+`.opencode/command/` is not tracked in git — verified via `git ls-files`. The directory was already cleaned up by a prior `/uf.init` migration. No repository cleanup task needed.
 
 ## Risks / Trade-offs
 

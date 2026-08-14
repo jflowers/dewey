@@ -30,19 +30,19 @@ This causes a split-brain state: `dewey init` writes to `.opencode/command/` whi
 
 ## Constitution Alignment
 
-Assessed against the Unbound Force org constitution.
+Assessed against the Dewey project constitution (v1.4.0).
 
-### I. Autonomous Collaboration
+### I. Composability First
+
+**Assessment**: PASS
+
+Dewey remains independently installable. The `.opencode/` directory detection guard is preserved — slash commands are only scaffolded when OpenCode is present. The migration only moves Dewey-owned commands (Composability First boundary). The change aligns Dewey with the directory convention used by all other UF heroes, improving cross-hero composability.
+
+### II. Autonomous Collaboration
 
 **Assessment**: N/A
 
 This change does not affect artifact-based communication or MCP tool interfaces. It modifies a local filesystem scaffolding path used during project initialization.
-
-### II. Composability First
-
-**Assessment**: PASS
-
-Dewey remains independently installable. The `.opencode/` directory detection guard is preserved — slash commands are only scaffolded when OpenCode is present. The change aligns Dewey with the directory convention used by all other UF heroes, improving cross-hero composability.
 
 ### III. Observable Quality
 
@@ -54,4 +54,4 @@ Migration actions are logged via `charmbracelet/log` (info level), providing obs
 
 **Assessment**: PASS
 
-All four existing test functions (`TestInitCmd_ScaffoldsSlashCommands`, `TestInitCmd_SkipsExistingSlashCommands`, `TestInitCmd_NoOpenCodeDir`, `TestInitCmd_ReInitScaffoldsNewCommands`) are updated to use the new path. A new test is added for the migration path (old directory detected, commands moved to new directory).
+All four existing test functions are updated to use the new path. Three new tests are added: migration (old directory detected, commands moved), conflict resolution (new directory version preserved), and non-Dewey file preservation (old directory retained when it contains non-Dewey files). All 8 spec scenarios have corresponding test coverage.

@@ -2,7 +2,7 @@
 
 ### Requirement: Migration of Dewey slash commands from old directory
 
-When `dewey init` detects the old `.opencode/command/` directory, it MUST migrate Dewey-owned slash command files to `.opencode/commands/` before scaffolding. Only files present in the `deweySlashCommands` map SHALL be migrated. Files already present in the new directory MUST NOT be overwritten by migrated copies.
+When `dewey init` detects the old `.opencode/command/` directory, it MUST migrate Dewey-owned slash command files to `.opencode/commands/` before scaffolding. Only files present in the `deweySlashCommands` map SHALL be migrated. Files already present in the new directory MUST NOT be overwritten by migrated copies. If migration of an individual file fails (I/O error, permission denied), the error SHOULD be logged at warn level and migration SHOULD continue with remaining files. Migration failures MUST NOT prevent scaffolding of new commands.
 
 #### Scenario: Old directory exists with Dewey commands, new directory does not exist
 
@@ -20,7 +20,7 @@ When `dewey init` detects the old `.opencode/command/` directory, it MUST migrat
 
 - **GIVEN** a vault with `.opencode/command/` containing only Dewey slash command files
 - **WHEN** `dewey init` migrates all files to `.opencode/commands/`
-- **THEN** the empty `.opencode/command/` directory SHOULD be removed
+- **THEN** the empty `.opencode/command/` directory MUST be removed
 
 #### Scenario: Old directory contains non-Dewey files after migration
 
@@ -53,6 +53,10 @@ Previously: `dewey init` scaffolded slash commands into `.opencode/command/` (si
 - **GIVEN** a directory without `.opencode/`
 - **WHEN** `dewey init` is run
 - **THEN** slash command scaffolding is skipped entirely (no `.opencode/commands/` directory is created)
+
+## Test Strategy
+
+All 8 scenarios (4 migration + 3 scaffolding + 1 error resilience) are covered by 4 updated existing tests and 3 new tests. Tests use `t.TempDir()` for filesystem isolation. Run with `-race -count=1`. Coverage strategy: every MUST/MUST NOT requirement has a corresponding assertion.
 
 ## REMOVED Requirements
 
