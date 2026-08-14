@@ -1,4 +1,5 @@
 ---
+name: pre-flight
 description: "Shared pre-flight skill for CI detection and local tool execution. Supports hard-gate and ci-aware execution policies."
 ---
 <!-- scaffolded by uf vdev -->
@@ -13,8 +14,8 @@ an execution policy.
 
 | Mode | Behavior | Typical consumer |
 |------|----------|-----------------|
-| `hard-gate` | Run all detected tools. Stop on first failure. | `/review-council`, `/unleash` |
-| `ci-aware` | Build CI coverage matrix against PR check results. Skip tools CI already verified. Run the rest. | `/review-pr` |
+| `hard-gate` | Run all detected tools. Stop on first failure. | `/uf.review-council`, `/uf.unleash` |
+| `ci-aware` | Build CI coverage matrix against PR check results. Skip tools CI already verified. Run the rest. | `/uf.review-pr` |
 
 The consuming command specifies which mode to use.
 

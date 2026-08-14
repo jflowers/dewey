@@ -1,14 +1,10 @@
 ---
 description: "Public relations and communications specialist — owns press releases, social media, and community updates."
 mode: subagent
-model: google-vertex-anthropic/claude-opus-4-6@default
 temperature: 0.5
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: false
-  webfetch: false
+permission:
+  bash: deny
+  webfetch: deny
 ---
 <!-- scaffolded by uf vdev -->
 
@@ -38,8 +34,8 @@ informational note and proceed with standard workflows.
 
 Before writing, read:
 
-1. `unbound-force.md` — Hero descriptions and team vision (primary brand voice reference)
-2. `AGENTS.md` — Project overview, capabilities, recent changes
+1. `docs/heroes.md` — Hero descriptions and team vision (primary brand voice reference)
+2. `CHANGELOG.md` — Recent changes; `AGENTS.md` — Project overview, capabilities
 3. `.opencode/uf/packs/content.md` — Content convention pack (focus on PR-NNN rules for Public Relations and shared VB/FA/FT rules)
 4. `.opencode/uf/packs/content-custom.md` — Project-specific content rules (if present)
 5. The spec or feature being communicated — understand what it does and why it matters

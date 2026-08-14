@@ -1,14 +1,10 @@
 ---
 description: "Blog and announcement writer — owns release notes, blog posts, and feature announcements."
 mode: subagent
-model: google-vertex-anthropic/claude-opus-4-6@default
 temperature: 0.4
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: false
-  webfetch: false
+permission:
+  bash: deny
+  webfetch: deny
 ---
 <!-- scaffolded by uf vdev -->
 
@@ -38,8 +34,8 @@ informational note and proceed with standard workflows.
 
 Before writing, read:
 
-1. `AGENTS.md` — Project overview, recent changes, hero descriptions
-2. `unbound-force.md` — Hero descriptions and team vision (for brand voice)
+1. `CHANGELOG.md` — Recent changes; `AGENTS.md` — Project overview, hero descriptions
+2. `docs/heroes.md` — Hero descriptions and team vision (for brand voice)
 3. `.opencode/uf/packs/content.md` — Content convention pack (focus on BA-NNN rules for Blog & Announcements and shared VB/FA/FT rules)
 4. `.opencode/uf/packs/content-custom.md` — Project-specific content rules (if present)
 5. The spec artifacts for the feature being announced — read spec.md, plan.md, and tasks.md to understand what was built and why

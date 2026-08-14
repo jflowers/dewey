@@ -6,10 +6,6 @@ handoffs:
     prompt: Create a plan for the spec. I am building with...
 ---
 <!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vv0.6.1 -->
-<!-- scaffolded by uf vdev -->
 
 ## User Input
 
@@ -20,6 +16,13 @@ $ARGUMENTS
 You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
+
+**STOP HERE. Do NOT proceed to implementation.**
+
+Your job is done. Report the results and prompt the
+user. The user will invoke a separate command
+(`/speckit.implement`, `/unleash`, or `/cobalt-crush`)
+when they are ready to implement.
 
 Goal: Detect and reduce ambiguity or missing decision points in the active feature specification and record the clarifications directly in the spec file.
 
@@ -199,3 +202,6 @@ Context for prioritization: $ARGUMENTS
   - Files within `FEATURE_DIR` (spec artifacts:
     plan.md, tasks.md, research.md, data-model.md,
     quickstart.md, contracts/, checklists/)
+- The user needs to review the plan before
+  implementation begins. Implementing without review
+  defeats the purpose of the spec-first workflow.

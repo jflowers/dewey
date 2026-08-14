@@ -9,7 +9,7 @@ description: >
 ---
 <!-- scaffolded by uf vdev -->
 
-# Command: /unleash
+# Command: /uf.unleash
 
 ## Description
 
@@ -24,10 +24,40 @@ off on re-run.
 ## Usage
 
 ```
-/unleash
+/uf.unleash
 ```
 
 ## Instructions
+
+> **SESSION-RESUME GUARD**: If you are resuming this
+> command after context compression or a session restart,
+> STOP and re-read this entire template before continuing.
+> Do NOT infer which steps are complete from compressed
+> context summaries. Only filesystem markers are
+> authoritative for resumability:
+> - Task checkboxes (`[x]` vs `[ ]`) in `tasks.md`
+> - `<!-- spec-review: passed -->` in `tasks.md`
+> - `<!-- code-review: passed -->` in `tasks.md`
+>
+> Maintain the execution checklist below using the Edit
+> tool. Update it in-place as each step, phase, or
+> iteration completes. This is your live state record.
+
+**Execution Checklist** -- update in-place with Edit tool:
+
+```
+- [ ] Step 0: Startup Cleanup
+- [ ] Step 1: Branch Safety Gate
+- [ ] Step 2: Resumability Detection
+- [ ] Step 3: Clarify (Step 1)
+- [ ] Step 4: Plan (Step 2)
+- [ ] Step 5: Tasks (Step 3)
+- [ ] Step 6: Spec Review (Step 4) -- iteration: 0/3
+- [ ] Step 7: Implement (Step 5) -- phase: 0/N, batch: 0/N, workers: 0/N
+- [ ] Step 8: Code Review (Step 6) -- iteration: 0/3
+- [ ] Step 9: Retrospective (Step 7)
+- [ ] Step 10: Demo (Step 8)
+```
 
 ### 0. Startup Cleanup
 
@@ -44,6 +74,10 @@ previous interrupted runs:
 If `swarm_worktree_list` is not available (Replicator
 not installed), skip this step silently.
 
+> CHECKPOINT: Mark Step 0 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 1. Do NOT ask for confirmation.
+
 ### 1. Branch Safety Gate
 
 Get the current branch:
@@ -53,7 +87,7 @@ git rev-parse --abbrev-ref HEAD
 ```
 
 - If on `main`: **STOP** with error:
-  > "Cannot run /unleash on main. Must be on a Speckit
+  > "Cannot run /uf.unleash on main. Must be on a Speckit
   > (`NNN-*`) or OpenSpec (`opsx/*`) feature branch."
 
 - If on `opsx/*`: **OpenSpec mode detected.**
@@ -90,15 +124,22 @@ git rev-parse --abbrev-ref HEAD
 
 - If the branch does not match `NNN-*` or `opsx/*`:
   **STOP** with error:
-  > "Unrecognized branch pattern. /unleash requires a
+  > "Unrecognized branch pattern. /uf.unleash requires a
   > Speckit feature branch (`NNN-*`) or OpenSpec branch
   > (`opsx/*`). Run `/speckit.specify` or
   > `/opsx-propose` to create one."
 
+> CHECKPOINT: Mark Step 1 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 2. Do NOT ask for confirmation.
+
 ### 2. Resumability Detection
 
 Probe filesystem state to determine which steps are
-already complete. Check in order:
+already complete. Check in order. **Important**:
+compressed context summaries are NOT valid resumability
+indicators -- only the filesystem markers listed below
+are authoritative.
 
 **If `WORKFLOW_TIER = openspec`**: checks 1-3 are always
 "done" — these artifacts were created by `/opsx-propose`.
@@ -151,6 +192,10 @@ from the first incomplete step.
 If ALL steps are complete (all tasks done, tests pass):
 skip directly to step 7 (retrospective) since it is
 idempotent.
+
+> CHECKPOINT: Mark Step 2 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 3. Do NOT ask for confirmation.
 
 ### 3. Step 1 -- Clarify
 
@@ -209,7 +254,7 @@ needed" and proceed to step 2.
   all unanswerable questions presented at once:
 
   ```
-  ## /unleash paused at: clarify
+  ## /uf.unleash paused at: clarify
 
   **Reason**: N question(s) require human input
 
@@ -221,11 +266,15 @@ needed" and proceed to step 2.
 
   ### What to do next
   Answer these questions in the spec, then re-run
-  `/unleash`.
+  `/uf.unleash`.
 
   ### Then resume
-  Run `/unleash` to continue from the plan step.
+  Run `/uf.unleash` to continue from the plan step.
   ```
+
+> CHECKPOINT: Mark Step 3 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 4. Do NOT ask for confirmation.
 
 ### 4. Step 2 -- Plan
 
@@ -248,6 +297,10 @@ Generate the implementation plan by delegating to the
    > "Plan generation failed -- plan.md was not created.
    > Check the agent output for errors."
 
+> CHECKPOINT: Mark Step 4 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 5. Do NOT ask for confirmation.
+
 ### 5. Step 3 -- Tasks
 
 **If `WORKFLOW_TIER = openspec`**: skip this step.
@@ -268,6 +321,10 @@ Generate the task list by delegating to the
    > "Task generation failed -- tasks.md was not created.
    > Check the agent output for errors."
 
+> CHECKPOINT: Mark Step 5 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 6. Do NOT ask for confirmation.
+
 ### 6. Step 4 -- Spec Review
 
 Review the spec artifacts using the review council in
@@ -277,7 +334,7 @@ Divisor agents provide equivalent coverage (consistency
 analysis + quality validation) in a single pass.
 
 1. Read the full contents of
-   `.opencode/commands/review-council.md`.
+   `.opencode/commands/uf.review-council.md`.
 2. Delegate to the `cobalt-crush-dev` agent via the Task
    tool with the review council's instructions, adding
    the explicit mode override: "Run in **Spec Review
@@ -302,11 +359,14 @@ analysis + quality validation) in a single pass.
   policy). After fixes, re-run the review. If all
   APPROVE after fixes, write the marker and proceed.
 
+  > CHECKPOINT: Update execution checklist -- spec
+  > review iteration N/3.
+
 - If HIGH or CRITICAL findings remain after auto-fixing
   LOW/MEDIUM: **EXIT** with the findings:
 
   ```
-  ## /unleash paused at: spec review
+  ## /uf.unleash paused at: spec review
 
   **Reason**: HIGH/CRITICAL findings in spec artifacts
 
@@ -316,11 +376,15 @@ analysis + quality validation) in a single pass.
 
   ### What to do next
   Run `/speckit.clarify` to address the findings, then
-  re-run `/unleash`.
+  re-run `/uf.unleash`.
 
   ### Then resume
-  Run `/unleash` to continue from spec review.
+  Run `/uf.unleash` to continue from spec review.
   ```
+
+> CHECKPOINT: Mark Step 6 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 7. Do NOT ask for confirmation.
 
 ### 7. Step 5 -- Implement
 
@@ -333,7 +397,7 @@ and use its CI Workflow Parsing phase to discover the
 exact CI commands from `.github/workflows/`. Also run
 its Local Tool Detection phase to discover additional
 tools from config files. This is the shared pre-flight
-logic used by `/review-council` and `/review-pr`.
+logic used by `/uf.review-council` and `/uf.review-pr`.
 
 **For each phase in tasks.md**:
 
@@ -374,6 +438,9 @@ logic used by `/review-council` and `/review-pr`.
 
    d. Wait for all workers in the batch to complete.
 
+      > CHECKPOINT: Update execution checklist --
+      > batch N/M complete, workers done/total.
+
    e. **If any worker fails**: stop spawning new workers
       (do not start the next batch). Wait for any
       already-running workers to complete or fail. Then
@@ -382,7 +449,7 @@ logic used by `/review-council` and `/review-pr`.
       context:
 
       ```
-      ## /unleash paused at: implement (Phase N)
+      ## /uf.unleash paused at: implement (Phase N)
 
       **Reason**: Parallel worker failed
 
@@ -391,10 +458,10 @@ logic used by `/review-council` and `/review-pr`.
 
       ### What to do next
       Fix the issue described above, then re-run
-      `/unleash`.
+      `/uf.unleash`.
 
       ### Then resume
-      Run `/unleash` to continue from the failed phase.
+      Run `/uf.unleash` to continue from the failed phase.
       ```
 
    f. After all workers in a batch complete successfully,
@@ -413,7 +480,7 @@ logic used by `/review-council` and `/review-pr`.
         details:
 
         ```
-        ## /unleash paused at: implement (Phase N)
+        ## /uf.unleash paused at: implement (Phase N)
 
         **Reason**: Worktree merge conflict
 
@@ -422,10 +489,10 @@ logic used by `/review-council` and `/review-pr`.
 
         ### What to do next
         Resolve the merge conflicts manually, then
-        re-run `/unleash`.
+        re-run `/uf.unleash`.
 
         ### Then resume
-        Run `/unleash` to continue from the current
+        Run `/uf.unleash` to continue from the current
         phase.
         ```
 
@@ -451,11 +518,15 @@ logic used by `/review-council` and `/review-pr`.
    are complete (both sequential and parallel), run the
    pre-flight skill in `hard-gate` mode to execute all
    detected CI and local tool commands.
+
+   > CHECKPOINT: Update execution checklist -- Phase
+   > N/M complete.
+
    - If all pass: proceed to the next phase.
    - If any fail: **EXIT** with the failure details:
 
      ```
-     ## /unleash paused at: implement (Phase N checkpoint)
+     ## /uf.unleash paused at: implement (Phase N checkpoint)
 
      **Reason**: Build or test failure after Phase N
 
@@ -463,11 +534,15 @@ logic used by `/review-council` and `/review-pr`.
      **Output**: [error output]
 
      ### What to do next
-     Fix the build/test failure, then re-run `/unleash`.
+     Fix the build/test failure, then re-run `/uf.unleash`.
 
      ### Then resume
-     Run `/unleash` to continue from the next phase.
+     Run `/uf.unleash` to continue from the next phase.
      ```
+
+> CHECKPOINT: Mark Step 7 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 8. Do NOT ask for confirmation.
 
 ### 8. Step 6 -- Code Review
 
@@ -477,7 +552,7 @@ gate, Phase 1b Gaze quality analysis (if available), and
 Divisor agent reviews.
 
 1. Read the full contents of
-   `.opencode/commands/review-council.md`.
+   `.opencode/commands/uf.review-council.md`.
 2. Delegate to the `cobalt-crush-dev` agent via the Task
    tool with the review council's instructions, adding
    the explicit mode override: "Run in **Code Review
@@ -508,11 +583,14 @@ quality data.
   b. Re-run the review council in code review mode.
   c. If all APPROVE: proceed to step 7.
 
+  > CHECKPOINT: Update execution checklist -- code
+  > review iteration N/3.
+
 - If 3 iterations are exhausted with remaining findings:
   **EXIT** with the persistent issues:
 
   ```
-  ## /unleash paused at: code review
+  ## /uf.unleash paused at: code review
 
   **Reason**: 3 review iterations exhausted
 
@@ -528,11 +606,15 @@ quality data.
 
   ### What to do next
   Fix the outstanding findings manually, then re-run
-  `/unleash`.
+  `/uf.unleash`.
 
   ### Then resume
-  Run `/unleash` to continue from code review.
+  Run `/uf.unleash` to continue from code review.
   ```
+
+> CHECKPOINT: Mark Step 8 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 9. Do NOT ask for confirmation.
 
 ### 9. Step 7 -- Retrospective
 
@@ -570,7 +652,18 @@ memory.
    Display the learnings in the output so they are not
    lost.
 
+> CHECKPOINT: Mark Step 9 complete in the execution
+> checklist before proceeding. Proceed immediately to
+> Step 10. Do NOT ask for confirmation.
+
 ### 10. Step 8 -- Demo
+
+> **OUTPUT FIDELITY GUARD**: Before composing any demo
+> output, re-read this Step 10 Demo section (from this
+> heading through the CHECKPOINT blockquote below).
+> The template is the sole authority for prescribed
+> output format — NEVER reconstruct it from memory or
+> compressed context summaries.
 
 Present structured demo instructions to the developer.
 
@@ -602,11 +695,13 @@ Present structured demo instructions to the developer.
 4. **Test Results**: summarize the test output from the
    most recent build/test checkpoint.
 
-5. **Next Steps**: always present these options:
-   - `/finale` to commit, push, create PR, and return
-     to main
-   - `/speckit.clarify` to refine the spec and re-run
-     `/unleash`
+5. **Next Steps**: always present exactly these two
+   options as shown in the format block below — do not
+   paraphrase, add, or remove options.
+   **Note**: The pre-PR `/uf.review-council` requirement
+   is already satisfied by Step 8 (Code Review). Do NOT
+   re-suggest `/uf.review-council` or hand-roll git
+   commit/push/PR steps in the demo output.
 
 Format the output as:
 
@@ -630,12 +725,22 @@ Format the output as:
 
 ## Next Steps
 
-- Run `/finale` to create PR and watch CI
+- Run `/uf.finale` to create PR and watch CI
 - Run `/speckit.clarify` to refine and iterate
 ```
 
+> CHECKPOINT: Mark Step 10 complete in the execution
+> checklist. Pipeline complete.
+
 ## Guardrails
 
+- **NEVER pause between steps to ask for human
+  confirmation** -- proceed immediately from one step to
+  the next. The only valid reasons to exit the pipeline
+  are: unanswerable clarification questions,
+  HIGH/CRITICAL spec findings, build/test failures,
+  merge conflicts, and 3 review iterations exhausted.
+  All other transitions are autonomous.
 - **NEVER run on `main`** -- the command is for Speckit
   (`NNN-*`) and OpenSpec (`opsx/*`) feature branches
 - **NEVER skip spec review exit on HIGH/CRITICAL** --
@@ -653,9 +758,12 @@ Format the output as:
   it means the same mistakes will be repeated
 - **ALWAYS clean up worktrees** -- stale worktrees waste
   disk space and can cause confusion on re-runs
-- **NEVER create WorkflowInstance objects** -- `/unleash`
+- **NEVER create WorkflowInstance objects** -- `/uf.unleash`
   operates at the Speckit pipeline level, not the hero
   lifecycle workflow level (Specs 008/012/016)
 - **NEVER hardcode build/test commands** -- load the
   `pre-flight` skill to derive them from
   `.github/workflows/` and local tool configs
+- **NEVER improvise Demo exit text** -- the "Next Steps"
+  section in Step 10 prescribes the exact output; re-read
+  and reproduce it verbatim

@@ -39,6 +39,22 @@ When ready to implement, run /opsx-apply
    ```
    This creates a scaffolded change at `openspec/changes/<name>/` with `.openspec.yaml`.
 
+2b. **Check for uncommitted changes**
+
+   Before creating or switching branches, run
+   `git status --short`. If there are uncommitted changes
+   (staged, unstaged, or untracked files that appear
+   related to work):
+   - **STOP** and ask the user for confirmation before
+     switching branches. Show what uncommitted changes
+     exist and warn that switching branches with a dirty
+     working tree may cause changes to be applied to the
+     wrong branch.
+   - If the user confirms, proceed. If not, abort.
+   - Exception: if the user explicitly requested a new
+     change, this still requires confirmation -- never
+     silently switch branches with uncommitted work.
+
 3. **Create and checkout a branch**
 
    ```bash

@@ -3,10 +3,6 @@ description: Convert existing tasks into actionable, dependency-ordered GitHub i
 tools: ['github/github-mcp-server/issue_write']
 ---
 <!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vv0.6.1 -->
-<!-- scaffolded by uf vdev -->
 
 ## User Input
 
@@ -37,14 +33,10 @@ git config --get remote.origin.url
 
 ## Guardrails
 
-- **NEVER modify source code** — this command updates
-  spec artifacts ONLY. Implementation changes belong in
-  `/speckit.implement`, `/unleash`, or `/cobalt-crush`.
-- **NEVER modify test files, Go source, Markdown agents,
-  convention packs, or config files** outside the
-  `specs/NNN-*/` feature directory.
-- The ONLY files this command may write are:
-  - `FEATURE_SPEC` (the spec.md file)
-  - Files within `FEATURE_DIR` (spec artifacts:
-    plan.md, tasks.md, research.md, data-model.md,
-    quickstart.md, contracts/, checklists/)
+- This command creates **GitHub issues via** the MCP API.
+  It does NOT write local files.
+- Issues MUST only be created in the repository matching
+  the current Git remote. NEVER create issues in
+  unrelated repositories.
+- Do NOT modify source code, spec artifacts, or any
+  local files.

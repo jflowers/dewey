@@ -2,10 +2,6 @@
 description: Generate a custom checklist for the current feature based on user requirements.
 ---
 <!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vdev -->
-<!-- scaffolded by uf vv0.6.1 -->
-<!-- scaffolded by uf vdev -->
 
 ## Checklist Purpose: "Unit Tests for English"
 
@@ -35,6 +31,13 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+**STOP HERE. Do NOT proceed to implementation.**
+
+Your job is done. Report the results and prompt the
+user. The user will invoke a separate command
+(`/speckit.implement`, `/unleash`, or `/cobalt-crush`)
+when they are ready to implement.
 
 ## Execution Steps
 
@@ -312,3 +315,6 @@ Sample items:
   - Files within `FEATURE_DIR` (spec artifacts:
     plan.md, tasks.md, research.md, data-model.md,
     quickstart.md, contracts/, checklists/)
+- The user needs to review the plan before
+  implementation begins. Implementing without review
+  defeats the purpose of the spec-first workflow.

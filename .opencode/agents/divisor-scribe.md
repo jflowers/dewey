@@ -1,14 +1,10 @@
 ---
 description: "Technical documentation specialist — owns READMEs, specs, CLI help, and API docs."
 mode: subagent
-model: google-vertex-anthropic/claude-opus-4-6@default
 temperature: 0.1
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: false
-  webfetch: false
+permission:
+  bash: deny
+  webfetch: deny
 ---
 <!-- scaffolded by uf vdev -->
 
@@ -58,15 +54,29 @@ When asked to create or update a README:
 4. Every claim about the project MUST be verified against actual source code or test output — never fabricate features or metrics
 5. Keep install and usage instructions copy-pasteable — a developer should be able to follow them exactly
 
-### 2. AGENTS.md Updates
+### 2. Documentation Updates
+
+#### CHANGELOG.md Entries
+
+When asked to add change entries to CHANGELOG.md:
+
+1. Read the full current CHANGELOG.md
+2. Entries MUST follow this format:
+   - Line 1: `- <change-name>: <summary of what changed>`
+   - Line 2+: `  - Spec: \`openspec/specs/<capability>/spec.md\`` (one per capability)
+   - Every entry MUST include at least one Spec path pointing to the canonical spec under `openspec/specs/`. This applies to both OpenSpec and SpecKit workflows.
+   - If the change has no spec (e.g., pure chore/infra), use `  - Spec: _(none — <reason>)_`
+3. Follow the existing format precisely — match indentation, bullet style
+4. Verify all spec paths against the actual codebase
+
+#### AGENTS.md Updates
 
 When asked to update AGENTS.md:
 
 1. Read the full current AGENTS.md
-2. Identify what sections need updating (Project Structure, Active Technologies, Recent Changes, etc.)
+2. Identify what structural sections need updating (Project Structure, Conventions, Build Commands)
 3. Follow the existing format precisely — match indentation, table alignment, bullet style
-4. Recent Changes entries MUST follow the established pattern: spec number, colon, summary of changes with file counts and task counts
-5. Verify all file paths, line references, and counts against the actual codebase
+4. Verify all file paths and line references against the actual codebase
 
 ### 3. Spec Descriptions
 

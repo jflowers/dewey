@@ -1,15 +1,15 @@
 ---
-pack_id: default-custom
+pack_id: ci-custom
 language: Any
 version: 1.0.0
 ---
-<!-- scaffolded by unbound vdev -->
+<!-- scaffolded by uf vdev -->
 
-# Custom Rules: Default
+# Custom Rules: CI
 
 Project-specific conventions that extend the canonical
-default convention pack. Rules in this file are loaded alongside
-`default.md` by Cobalt-Crush (during implementation) and
+CI convention pack. Rules in this file are loaded alongside
+`ci.md` by Cobalt-Crush (during implementation) and
 all Divisor persona agents (during review).
 
 Use the `CR-NNN` prefix for all custom rules. Use `[MUST]`,
