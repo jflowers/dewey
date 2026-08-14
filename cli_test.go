@@ -404,7 +404,7 @@ func TestInitCmd_GitignoreLegacyPattern(t *testing.T) {
 }
 
 // TestInitCmd_ScaffoldsSlashCommands verifies that dewey init creates
-// slash command files in .opencode/command/ when .opencode/ exists.
+// slash command files in .opencode/commands/ when .opencode/ exists.
 func TestInitCmd_ScaffoldsSlashCommands(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -423,9 +423,9 @@ func TestInitCmd_ScaffoldsSlashCommands(t *testing.T) {
 		t.Fatalf("init failed: %v", err)
 	}
 
-	// Verify all 5 Dewey slash commands were scaffolded.
-	for _, name := range []string{"dewey-store.md", "dewey-index.md", "dewey-reindex.md", "dewey-compile.md", "dewey-lint.md"} {
-		path := filepath.Join(tmpDir, ".opencode", "command", name)
+	// Verify all 6 Dewey slash commands were scaffolded.
+	for _, name := range []string{"dewey-store.md", "dewey-index.md", "dewey-reindex.md", "dewey-compile.md", "dewey-curate.md", "dewey-lint.md"} {
+		path := filepath.Join(tmpDir, ".opencode", "commands", name)
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("slash command %s was not scaffolded", name)
 		}
@@ -437,8 +437,8 @@ func TestInitCmd_ScaffoldsSlashCommands(t *testing.T) {
 func TestInitCmd_SkipsExistingSlashCommands(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create .opencode/command/ with a custom dewey-store.md.
-	cmdDir := filepath.Join(tmpDir, ".opencode", "command")
+	// Create .opencode/commands/ with a custom dewey-store.md.
+	cmdDir := filepath.Join(tmpDir, ".opencode", "commands")
 	if err := os.MkdirAll(cmdDir, 0o755); err != nil {
 		t.Fatalf("create command dir: %v", err)
 	}
@@ -486,9 +486,9 @@ func TestInitCmd_NoOpenCodeDir(t *testing.T) {
 		t.Fatalf("init failed: %v", err)
 	}
 
-	// Verify no .opencode/command/ directory was created.
-	if _, err := os.Stat(filepath.Join(tmpDir, ".opencode", "command")); err == nil {
-		t.Error(".opencode/command/ should NOT exist when .opencode/ was not present")
+	// Verify no .opencode/commands/ directory was created.
+	if _, err := os.Stat(filepath.Join(tmpDir, ".opencode", "commands")); err == nil {
+		t.Error(".opencode/commands/ should NOT exist when .opencode/ was not present")
 	}
 }
 
@@ -513,7 +513,7 @@ func TestInitCmd_ReInitScaffoldsNewCommands(t *testing.T) {
 	}
 
 	// Verify slash commands were created.
-	storePath := filepath.Join(tmpDir, ".opencode", "command", "dewey-store.md")
+	storePath := filepath.Join(tmpDir, ".opencode", "commands", "dewey-store.md")
 	if _, err := os.Stat(storePath); err != nil {
 		t.Fatalf("dewey-store.md not created on first init")
 	}
@@ -533,6 +533,150 @@ func TestInitCmd_ReInitScaffoldsNewCommands(t *testing.T) {
 	// Verify the deleted command was re-scaffolded.
 	if _, err := os.Stat(storePath); err != nil {
 		t.Error("dewey-store.md should have been re-scaffolded on second init")
+	}
+}
+
+// TestInitCmd_MigratesOldCommandDir verifies that dewey init migrates
+// Dewey slash commands from .opencode/command/ (old) to .opencode/commands/ (new).
+func TestInitCmd_MigratesOldCommandDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .opencode/ and old .opencode/command/ with 2 Dewey files.
+	oldDir := filepath.Join(tmpDir, ".opencode", "command")
+	if err := os.MkdirAll(oldDir, 0o755); err != nil {
+		t.Fatalf("create old command dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "dewey-store.md"), []byte("old store"), 0o644); err != nil {
+		t.Fatalf("write old dewey-store: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "dewey-index.md"), []byte("old index"), 0o644); err != nil {
+		t.Fatalf("write old dewey-index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	newDir := filepath.Join(tmpDir, ".opencode", "commands")
+
+	// Assert both files were migrated to new directory.
+	for _, name := range []string{"dewey-store.md", "dewey-index.md"} {
+		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
+			t.Errorf("%s was not migrated to new dir", name)
+		}
+	}
+
+	// Assert old directory was removed (it only had Dewey files).
+	if _, err := os.Stat(oldDir); err == nil {
+		t.Error("old .opencode/command/ should have been removed (was empty after migration)")
+	}
+
+	// Assert all deweySlashCommands entries exist in new dir (scaffolding proceeded).
+	for name := range deweySlashCommands {
+		if _, err := os.Stat(filepath.Join(newDir, name)); err != nil {
+			t.Errorf("slash command %s was not scaffolded in new dir", name)
+		}
+	}
+}
+
+// TestInitCmd_MigrationSkipsExistingInNewDir verifies that migration does
+// not overwrite files already present in .opencode/commands/.
+func TestInitCmd_MigrationSkipsExistingInNewDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create both old and new directories with the same file but different content.
+	oldDir := filepath.Join(tmpDir, ".opencode", "command")
+	newDir := filepath.Join(tmpDir, ".opencode", "commands")
+	if err := os.MkdirAll(oldDir, 0o755); err != nil {
+		t.Fatalf("create old dir: %v", err)
+	}
+	if err := os.MkdirAll(newDir, 0o755); err != nil {
+		t.Fatalf("create new dir: %v", err)
+	}
+	oldContent := "old version of dewey-index"
+	newContent := "new version of dewey-index"
+	if err := os.WriteFile(filepath.Join(oldDir, "dewey-index.md"), []byte(oldContent), 0o644); err != nil {
+		t.Fatalf("write old file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(newDir, "dewey-index.md"), []byte(newContent), 0o644); err != nil {
+		t.Fatalf("write new file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Assert new dir file retains its original content (not overwritten).
+	content, err := os.ReadFile(filepath.Join(newDir, "dewey-index.md"))
+	if err != nil {
+		t.Fatalf("read new file: %v", err)
+	}
+	if string(content) != newContent {
+		t.Errorf("new dir file was overwritten, got %q, want %q", string(content), newContent)
+	}
+
+	// Assert old copy was removed.
+	if _, err := os.Stat(filepath.Join(oldDir, "dewey-index.md")); err == nil {
+		t.Error("old dewey-index.md should have been removed after migration")
+	}
+}
+
+// TestInitCmd_MigrationKeepsOldDirWithNonDeweyFiles verifies that the old
+// directory is preserved when it contains non-Dewey files after migration.
+func TestInitCmd_MigrationKeepsOldDirWithNonDeweyFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create old directory with a Dewey file and a non-Dewey file.
+	oldDir := filepath.Join(tmpDir, ".opencode", "command")
+	if err := os.MkdirAll(oldDir, 0o755); err != nil {
+		t.Fatalf("create old dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "dewey-store.md"), []byte("old store"), 0o644); err != nil {
+		t.Fatalf("write dewey file: %v", err)
+	}
+	nonDeweyContent := "speckit plan content"
+	if err := os.WriteFile(filepath.Join(oldDir, "speckit.plan.md"), []byte(nonDeweyContent), 0o644); err != nil {
+		t.Fatalf("write non-dewey file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	newDir := filepath.Join(tmpDir, ".opencode", "commands")
+
+	// Assert Dewey file was migrated to new dir.
+	if _, err := os.Stat(filepath.Join(newDir, "dewey-store.md")); err != nil {
+		t.Error("dewey-store.md was not migrated to new dir")
+	}
+
+	// Assert non-Dewey file is untouched in old dir.
+	content, err := os.ReadFile(filepath.Join(oldDir, "speckit.plan.md"))
+	if err != nil {
+		t.Fatalf("non-Dewey file should still exist in old dir: %v", err)
+	}
+	if string(content) != nonDeweyContent {
+		t.Errorf("non-Dewey file content changed, got %q", string(content))
+	}
+
+	// Assert old dir still exists (has non-Dewey files).
+	if _, err := os.Stat(oldDir); err != nil {
+		t.Error("old .opencode/command/ should still exist (contains non-Dewey files)")
 	}
 }
 
