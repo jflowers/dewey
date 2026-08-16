@@ -492,6 +492,137 @@ func TestInitCmd_NoOpenCodeDir(t *testing.T) {
 	}
 }
 
+// --- DCP config scaffolding tests ---
+
+// TestInitCmd_ScaffoldsDCPConfig verifies that dewey init creates
+// .opencode/dcp.jsonc when .opencode/ exists but no DCP config is present.
+func TestInitCmd_ScaffoldsDCPConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .opencode/ directory (simulating an OpenCode-initialized repo).
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Verify dcp.jsonc was created.
+	dcpPath := filepath.Join(tmpDir, ".opencode", "dcp.jsonc")
+	content, err := os.ReadFile(dcpPath)
+	if err != nil {
+		t.Fatalf("dcp.jsonc was not scaffolded: %v", err)
+	}
+
+	// Verify content has protectTags and $schema.
+	s := string(content)
+	if !strings.Contains(s, "protectTags") {
+		t.Error("dcp.jsonc should contain protectTags")
+	}
+	if !strings.Contains(s, "$schema") {
+		t.Error("dcp.jsonc should contain $schema reference")
+	}
+}
+
+// TestInitCmd_SkipsExistingDCPConfigWithProtectTags verifies that dewey init
+// does not overwrite an existing DCP config that already has protectTags.
+func TestInitCmd_SkipsExistingDCPConfigWithProtectTags(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	// Create existing dcp.jsonc with custom content that includes protectTags.
+	customContent := `{"compress": {"protectTags": true, "maxTokens": 5000}}`
+	dcpPath := filepath.Join(tmpDir, ".opencode", "dcp.jsonc")
+	if err := os.WriteFile(dcpPath, []byte(customContent), 0o644); err != nil {
+		t.Fatalf("write custom dcp.jsonc: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Verify custom content was preserved (not overwritten).
+	content, err := os.ReadFile(dcpPath)
+	if err != nil {
+		t.Fatalf("read dcp.jsonc: %v", err)
+	}
+	if string(content) != customContent {
+		t.Errorf("dcp.jsonc was overwritten, got:\n%s", string(content))
+	}
+}
+
+// TestInitCmd_WarnsOnDCPConfigMissingProtectTags verifies that dewey init
+// warns when a DCP config exists but does not contain protectTags, and
+// does not overwrite the file.
+func TestInitCmd_WarnsOnDCPConfigMissingProtectTags(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	// Create existing dcp.jsonc WITHOUT protectTags.
+	customContent := `{"compress": {"maxTokens": 5000}}`
+	dcpPath := filepath.Join(tmpDir, ".opencode", "dcp.jsonc")
+	if err := os.WriteFile(dcpPath, []byte(customContent), 0o644); err != nil {
+		t.Fatalf("write custom dcp.jsonc: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Verify custom content was preserved (not overwritten).
+	content, err := os.ReadFile(dcpPath)
+	if err != nil {
+		t.Fatalf("read dcp.jsonc: %v", err)
+	}
+	if string(content) != customContent {
+		t.Errorf("dcp.jsonc was overwritten, got:\n%s", string(content))
+	}
+}
+
+// TestInitCmd_NoDCPConfigWhenNoOpenCodeDir verifies that dewey init does not
+// scaffold dcp.jsonc when .opencode/ does not exist (composability guard).
+func TestInitCmd_NoDCPConfigWhenNoOpenCodeDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("write .gitignore: %v", err)
+	}
+
+	cmd := newInitCmd()
+	cmd.SetArgs([]string{"--vault", tmpDir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Verify no dcp.jsonc was created.
+	dcpPath := filepath.Join(tmpDir, ".opencode", "dcp.jsonc")
+	if _, err := os.Stat(dcpPath); err == nil {
+		t.Error("dcp.jsonc should NOT exist when .opencode/ was not present")
+	}
+}
+
 // TestInitCmd_ReInitScaffoldsNewCommands verifies that running dewey init
 // on an already-initialized repo still scaffolds missing slash commands.
 func TestInitCmd_ReInitScaffoldsNewCommands(t *testing.T) {
@@ -2905,6 +3036,180 @@ func TestDoctorCmd_HasFlags(t *testing.T) {
 	cmd := newDoctorCmd()
 	if cmd.Flags().Lookup("vault") == nil {
 		t.Error("doctor command missing flag --vault")
+	}
+}
+
+// --- DCP config doctor tests ---
+
+// TestDoctorCmd_DCPConfigPresent verifies doctor reports PASS when
+// .opencode/dcp.jsonc exists with protectTags configured.
+func TestDoctorCmd_DCPConfigPresent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .uf/dewey/ + graph.db so doctor doesn't early-exit.
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+	dbPath := filepath.Join(deweyDir, "graph.db")
+	s, err := store.New(dbPath)
+	if err != nil {
+		t.Fatalf("store.New: %v", err)
+	}
+	if err := s.InsertPage(&store.Page{Name: "test-page", ContentHash: "abc123"}); err != nil {
+		t.Fatalf("InsertPage: %v", err)
+	}
+	_ = s.Close()
+
+	// Create .opencode/dcp.jsonc with protectTags.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+	dcpContent := `{"compress": {"protectTags": true}}`
+	if err := os.WriteFile(filepath.Join(tmpDir, ".opencode", "dcp.jsonc"), []byte(dcpContent), 0o644); err != nil {
+		t.Fatalf("write dcp.jsonc: %v", err)
+	}
+
+	cmd := newDoctorCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--vault", tmpDir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "✅ dcp.jsonc") {
+		t.Errorf("doctor should report dcp.jsonc pass, got:\n%s", output)
+	}
+	if !strings.Contains(output, "protectTags enabled") {
+		t.Errorf("doctor should report protectTags enabled, got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_DCPConfigMissing verifies doctor reports WARN when
+// .opencode/ exists but no DCP config file is present.
+func TestDoctorCmd_DCPConfigMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .uf/dewey/ + graph.db so doctor doesn't early-exit.
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+	dbPath := filepath.Join(deweyDir, "graph.db")
+	s, err := store.New(dbPath)
+	if err != nil {
+		t.Fatalf("store.New: %v", err)
+	}
+	if err := s.InsertPage(&store.Page{Name: "test-page", ContentHash: "abc123"}); err != nil {
+		t.Fatalf("InsertPage: %v", err)
+	}
+	_ = s.Close()
+
+	// Create .opencode/ but no dcp.jsonc.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+
+	cmd := newDoctorCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--vault", tmpDir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "⚠️") || !strings.Contains(output, "dcp.jsonc") || !strings.Contains(output, "not found") {
+		t.Errorf("doctor should report dcp.jsonc warn with 'not found', got:\n%s", output)
+	}
+	if !strings.Contains(output, "dewey init") {
+		t.Errorf("doctor should suggest 'dewey init' fix for missing DCP config, got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_DCPConfigMissingProtectTags verifies doctor reports WARN when
+// .opencode/dcp.jsonc exists but does not contain protectTags.
+func TestDoctorCmd_DCPConfigMissingProtectTags(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .uf/dewey/ + graph.db so doctor doesn't early-exit.
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+	dbPath := filepath.Join(deweyDir, "graph.db")
+	s, err := store.New(dbPath)
+	if err != nil {
+		t.Fatalf("store.New: %v", err)
+	}
+	if err := s.InsertPage(&store.Page{Name: "test-page", ContentHash: "abc123"}); err != nil {
+		t.Fatalf("InsertPage: %v", err)
+	}
+	_ = s.Close()
+
+	// Create .opencode/dcp.jsonc WITHOUT protectTags.
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".opencode"), 0o755); err != nil {
+		t.Fatalf("create .opencode: %v", err)
+	}
+	dcpContent := `{"compress": {"maxTokens": 5000}}`
+	if err := os.WriteFile(filepath.Join(tmpDir, ".opencode", "dcp.jsonc"), []byte(dcpContent), 0o644); err != nil {
+		t.Fatalf("write dcp.jsonc: %v", err)
+	}
+
+	cmd := newDoctorCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--vault", tmpDir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "⚠️") || !strings.Contains(output, "dcp.jsonc") || !strings.Contains(output, "protectTags not configured") {
+		t.Errorf("doctor should report dcp.jsonc warn with 'protectTags not configured', got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_NoDCPCheckWithoutOpenCodeDir verifies that doctor output
+// does NOT contain DCP-related text when .opencode/ is absent.
+func TestDoctorCmd_NoDCPCheckWithoutOpenCodeDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .uf/dewey/ + graph.db so doctor doesn't early-exit.
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+	dbPath := filepath.Join(deweyDir, "graph.db")
+	s, err := store.New(dbPath)
+	if err != nil {
+		t.Fatalf("store.New: %v", err)
+	}
+	if err := s.InsertPage(&store.Page{Name: "test-page", ContentHash: "abc123"}); err != nil {
+		t.Fatalf("InsertPage: %v", err)
+	}
+	_ = s.Close()
+
+	// Do NOT create .opencode/.
+
+	cmd := newDoctorCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--vault", tmpDir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor failed: %v", err)
+	}
+
+	output := buf.String()
+	// Doctor should NOT mention DCP when .opencode/ is absent.
+	if strings.Contains(output, "dcp.jsonc") {
+		t.Errorf("doctor should NOT mention dcp.jsonc when .opencode/ is absent, got:\n%s", output)
 	}
 }
 

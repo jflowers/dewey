@@ -207,6 +207,36 @@ func newSearchCmd() *cobra.Command {
 	return cmd
 }
 
+// dcpJSONCContent is the template for the DCP configuration file.
+// Enables protectTags so DCP honors <protect> blocks in slash commands.
+const dcpJSONCContent = `{
+  // DCP (Dynamic Context Pruning) configuration for OpenCode.
+  // See: https://github.com/Opencode-DCP/opencode-dynamic-context-pruning
+  "$schema": "https://raw.githubusercontent.com/Opencode-DCP/opencode-dynamic-context-pruning/master/dcp.schema.json",
+  // Slash command files in .opencode/commands/ use <protect> tags
+  // to mark execution-critical sections that must survive compression.
+  "compress": {
+    "protectTags": true
+  }
+}
+`
+
+// fileExists returns true if the given path exists on disk.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// fileContains returns true if the file at path exists and
+// its content contains the given substring.
+func fileContains(path, substr string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), substr)
+}
+
 // newInitCmd creates the `dewey init` subcommand.
 // Initializes a .uf/dewey/ directory with default configuration.
 // Idempotent — running twice does not error (per CLI contract).
@@ -344,6 +374,33 @@ sources:
 								logger.Info("scaffolded slash command", "path", cmdPath)
 							}
 						}
+					}
+				}
+			}
+
+			// Scaffold DCP configuration (.opencode/dcp.jsonc) to enable
+			// protectTags for slash command <protect> blocks.
+			// Composability guard: only scaffold when .opencode/ exists.
+			// Three-way idempotent logic:
+			//   1. Skip if dcp.jsonc or dcp.json already has protectTags
+			//   2. Warn if file exists without protectTags (don't overwrite)
+			//   3. Create dcp.jsonc if neither file exists
+			if fileExists(filepath.Join(vaultPath, ".opencode")) {
+				dcpJSONC := filepath.Join(vaultPath, ".opencode", "dcp.jsonc")
+				dcpJSON := filepath.Join(vaultPath, ".opencode", "dcp.json")
+
+				switch {
+				case fileContains(dcpJSONC, "protectTags") || fileContains(dcpJSON, "protectTags"):
+					// Already configured — skip silently.
+				case fileExists(dcpJSONC) || fileExists(dcpJSON):
+					// File exists but missing protectTags — warn, don't overwrite.
+					logger.Warn("DCP config exists but missing protectTags; add \"compress\": {\"protectTags\": true} to enable protect-tag support")
+				default:
+					// Neither file exists — scaffold dcp.jsonc.
+					if writeErr := os.WriteFile(dcpJSONC, []byte(dcpJSONCContent), 0o644); writeErr != nil {
+						logger.Warn("failed to scaffold DCP config", "path", dcpJSONC, "err", writeErr)
+					} else {
+						logger.Info("scaffolded DCP config", "path", dcpJSONC)
 					}
 				}
 			}
@@ -1447,6 +1504,24 @@ func runDoctorChecks(w io.Writer, vaultPath string) {
 		}
 	} else {
 		c.printCheck(w, "PASS", "opencode.json", "not found (optional)")
+	}
+
+	// Check DCP config for protectTags.
+	// Composability: only check when .opencode/ exists (silent skip otherwise).
+	if fileExists(filepath.Join(vaultPath, ".opencode")) {
+		dcpJSONC := filepath.Join(vaultPath, ".opencode", "dcp.jsonc")
+		dcpJSON := filepath.Join(vaultPath, ".opencode", "dcp.json")
+
+		switch {
+		case fileContains(dcpJSONC, "protectTags") || fileContains(dcpJSON, "protectTags"):
+			c.printCheck(w, "PASS", "dcp.jsonc", "protectTags enabled")
+		case fileExists(dcpJSONC) || fileExists(dcpJSON):
+			c.printCheck(w, "WARN", "dcp.jsonc", "exists but protectTags not configured")
+			dp("     Fix: Add \"compress\": {\"protectTags\": true} to your DCP config\n")
+		default:
+			c.printCheck(w, "WARN", "dcp.jsonc", "not found (protectTags disabled)")
+			dp("     Fix: dewey init\n")
+		}
 	}
 	dp("\n")
 
