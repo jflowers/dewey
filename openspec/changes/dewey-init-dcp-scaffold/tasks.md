@@ -33,3 +33,4 @@
 - [x] 3.1 Run `go build ./...`, `go vet ./...`, `go test -race -count=1 ./...` — all must pass
 - [x] 3.2 Verify constitution alignment: Composability First (DCP config only scaffolded when `.opencode/` exists), Observable Quality (doctor check provides PASS/WARN with fix hints), Testability (all paths covered by tests)
 <!-- spec-review: passed -->
+<!-- code-review: passed -->
