@@ -46,17 +46,17 @@ off on re-run.
 **Execution Checklist** -- update in-place with Edit tool:
 
 ```
-- [ ] Step 0: Startup Cleanup
-- [ ] Step 1: Branch Safety Gate
-- [ ] Step 2: Resumability Detection
-- [ ] Step 3: Clarify (Step 1)
-- [ ] Step 4: Plan (Step 2)
-- [ ] Step 5: Tasks (Step 3)
-- [ ] Step 6: Spec Review (Step 4) -- iteration: 0/3
-- [ ] Step 7: Implement (Step 5) -- phase: 0/N, batch: 0/N, workers: 0/N
-- [ ] Step 8: Code Review (Step 6) -- iteration: 0/3
-- [ ] Step 9: Retrospective (Step 7)
-- [ ] Step 10: Demo (Step 8)
+- [x] Step 0: Startup Cleanup
+- [x] Step 1: Branch Safety Gate
+- [x] Step 2: Resumability Detection
+- [x] Step 3: Clarify (Step 1) -- skipped (OpenSpec)
+- [x] Step 4: Plan (Step 2) -- skipped (OpenSpec)
+- [x] Step 5: Tasks (Step 3) -- skipped (OpenSpec)
+- [x] Step 6: Spec Review (Step 4) -- iteration: 1/3 (all APPROVE after auto-fix)
+- [x] Step 7: Implement (Step 5) -- phase: 1/1, sequential (no Swarm)
+- [x] Step 8: Code Review (Step 6) -- iteration: 1/3 (all APPROVE)
+- [x] Step 9: Retrospective (Step 7)
+- [x] Step 10: Demo (Step 8)
 ```
 
 ### 0. Startup Cleanup

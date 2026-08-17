@@ -325,6 +325,44 @@ func TestNewVertexEmbedder_MissingModel(t *testing.T) {
 	}
 }
 
+func TestVertexEmbedder_PredictURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		region  string
+		project string
+		model   string
+		want    string
+	}{
+		{
+			name:    "global region uses aiplatform.googleapis.com",
+			region:  "global",
+			project: "my-project",
+			model:   "text-embedding-005",
+			want:    "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/publishers/google/models/text-embedding-005:predict",
+		},
+		{
+			name:    "regional endpoint uses region-prefixed hostname",
+			region:  "us-central1",
+			project: "my-project",
+			model:   "text-embedding-005",
+			want:    "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project/locations/us-central1/publishers/google/models/text-embedding-005:predict",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := &VertexEmbedder{
+				project: tt.project,
+				region:  tt.region,
+				model:   tt.model,
+			}
+			got := v.predictURL()
+			if got != tt.want {
+				t.Errorf("predictURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // newTestVertexEmbedder creates a VertexEmbedder that routes requests to
 // the given test server and uses a mock token function.
 func newTestVertexEmbedder(srv *httptest.Server) *VertexEmbedder {

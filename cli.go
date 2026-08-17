@@ -359,12 +359,53 @@ sources:
 			}
 			} // end if !alreadyInitialized
 
-			// Scaffold Dewey-specific slash commands into .opencode/command/
+			// Scaffold Dewey-specific slash commands into .opencode/commands/
 			// if the .opencode/ directory exists (composability — only scaffold
 			// when OpenCode is present). Idempotent — skip files that already
 			// exist to avoid overwriting user customizations.
-			opencodeCmdDir := filepath.Join(vaultPath, ".opencode", "command")
+			opencodeCmdDir := filepath.Join(vaultPath, ".opencode", "commands")
 			if _, err := os.Stat(filepath.Join(vaultPath, ".opencode")); err == nil {
+				// Migrate Dewey slash commands from old .opencode/command/ (singular)
+				// to .opencode/commands/ (plural). Only moves Dewey-owned files.
+				oldCmdDir := filepath.Join(vaultPath, ".opencode", "command")
+				if _, err := os.Stat(oldCmdDir); err == nil {
+					if err := os.MkdirAll(opencodeCmdDir, 0o755); err != nil {
+						logger.Warn("failed to create commands dir for migration", "err", err)
+					} else {
+						for name := range deweySlashCommands {
+							oldPath := filepath.Join(oldCmdDir, name)
+							if _, err := os.Stat(oldPath); err != nil {
+								continue // File not in old dir — nothing to migrate.
+							}
+							newPath := filepath.Join(opencodeCmdDir, name)
+							if _, err := os.Stat(newPath); err == nil {
+								// Already exists in new dir — remove old copy.
+								if rmErr := os.Remove(oldPath); rmErr != nil {
+									logger.Warn("failed to remove old slash command", "path", oldPath, "err", rmErr)
+								} else {
+									logger.Info("removed old slash command (already in new dir)", "name", name)
+								}
+								continue
+							}
+							// Move file from old to new directory.
+							if mvErr := os.Rename(oldPath, newPath); mvErr != nil {
+								logger.Warn("failed to migrate slash command", "name", name, "err", mvErr)
+							} else {
+								logger.Info("migrated slash command", "from", oldPath, "to", newPath)
+							}
+						}
+						// Remove old directory if empty.
+						entries, err := os.ReadDir(oldCmdDir)
+						if err == nil && len(entries) == 0 {
+							if rmErr := os.Remove(oldCmdDir); rmErr != nil {
+								logger.Warn("failed to remove empty old command dir", "err", rmErr)
+							} else {
+								logger.Info("removed empty old command directory", "path", oldCmdDir)
+							}
+						}
+					}
+				}
+
 				if err := os.MkdirAll(opencodeCmdDir, 0o755); err == nil {
 					for name, content := range deweySlashCommands {
 						cmdPath := filepath.Join(opencodeCmdDir, name)

@@ -251,6 +251,44 @@ func TestVertexSynthesizer_Retry429ContextCancelled(t *testing.T) {
 	}
 }
 
+func TestVertexSynthesizer_RawPredictURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		region  string
+		project string
+		model   string
+		want    string
+	}{
+		{
+			name:    "global region uses aiplatform.googleapis.com",
+			region:  "global",
+			project: "my-project",
+			model:   "claude-opus-4-6",
+			want:    "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/publishers/anthropic/models/claude-opus-4-6:rawPredict",
+		},
+		{
+			name:    "regional endpoint uses region-prefixed hostname",
+			region:  "us-east5",
+			project: "my-project",
+			model:   "claude-sonnet-4-6",
+			want:    "https://us-east5-aiplatform.googleapis.com/v1/projects/my-project/locations/us-east5/publishers/anthropic/models/claude-sonnet-4-6:rawPredict",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := &VertexSynthesizer{
+				project: tt.project,
+				region:  tt.region,
+				model:   tt.model,
+			}
+			got := v.rawPredictURL()
+			if got != tt.want {
+				t.Errorf("rawPredictURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // newTestVertexSynth creates a VertexSynthesizer that routes requests to
 // the given test server with a mock token function.
 func newTestVertexSynth(srv *httptest.Server) *VertexSynthesizer {
