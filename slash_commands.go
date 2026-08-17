@@ -1,7 +1,7 @@
 package main
 
 // deweySlashCommands contains the slash command definitions that
-// `dewey init` scaffolds into `.opencode/command/` when the
+// `dewey init` scaffolds into `.opencode/commands/` when the
 // `.opencode/` directory exists. Each entry maps a filename to
 // the command content. Files that already exist are not overwritten
 // to preserve user customizations.
