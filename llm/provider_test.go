@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/unbound-force/dewey/v3/embed"
 )
 
 func TestNewSynthesizerFromConfig_Ollama(t *testing.T) {
@@ -126,6 +128,11 @@ func TestReadSynthesisConfig_BackwardCompatible(t *testing.T) {
 		t.Fatalf("write config: %v", err)
 	}
 
+	// Isolate env vars to ensure only compile_model affects the result.
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
+
 	cfg := ReadSynthesisConfig(dir)
 	if cfg.Provider != "ollama" {
 		t.Errorf("Provider = %q, want ollama", cfg.Provider)
@@ -133,12 +140,19 @@ func TestReadSynthesisConfig_BackwardCompatible(t *testing.T) {
 	if cfg.Model != "llama3.2:3b" {
 		t.Errorf("Model = %q, want llama3.2:3b", cfg.Model)
 	}
+	if cfg.Endpoint != embed.DefaultOllamaEndpoint {
+		t.Errorf("Endpoint = %q, want %q (default, since only compile_model is set)", cfg.Endpoint, embed.DefaultOllamaEndpoint)
+	}
 }
 
 func TestReadSynthesisConfig_EnvFallback(t *testing.T) {
 	dir := t.TempDir()
 	// Isolate from real global config.
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// Isolate endpoint env vars.
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
 	// No config file.
 	t.Setenv("DEWEY_GENERATION_MODEL", "mistral:latest")
 
@@ -148,6 +162,9 @@ func TestReadSynthesisConfig_EnvFallback(t *testing.T) {
 	}
 	if cfg.Model != "mistral:latest" {
 		t.Errorf("Model = %q, want mistral:latest (from env)", cfg.Model)
+	}
+	if cfg.Endpoint != embed.DefaultOllamaEndpoint {
+		t.Errorf("Endpoint = %q, want %q (default, since no synthesis env var is set)", cfg.Endpoint, embed.DefaultOllamaEndpoint)
 	}
 }
 
@@ -220,5 +237,124 @@ func TestReadSynthesisConfig_VaultOverridesGlobal(t *testing.T) {
 	}
 	if cfg.Model != "llama3.2:3b" {
 		t.Errorf("Model = %q, want llama3.2:3b", cfg.Model)
+	}
+}
+
+// --- Synthesis Endpoint Resolution Tests ---
+
+func TestResolveSynthesisEndpoint_OverridesAll(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "http://synthesis:9999")
+	t.Setenv("OLLAMA_HOST", "http://ollama:2222")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://embedding:3333")
+
+	got := ResolveSynthesisEndpoint()
+	if got != "http://synthesis:9999" {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q", got, "http://synthesis:9999")
+	}
+}
+
+func TestResolveSynthesisEndpoint_FallsBackToOllamaHost(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "http://host.docker.internal:11435")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://embedding:3333")
+
+	got := ResolveSynthesisEndpoint()
+	if got != "http://host.docker.internal:11435" {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q", got, "http://host.docker.internal:11435")
+	}
+}
+
+func TestResolveSynthesisEndpoint_WinsOverOllamaHost(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "http://synthesis:1111")
+	t.Setenv("OLLAMA_HOST", "http://ollama:2222")
+
+	got := ResolveSynthesisEndpoint()
+	if got != "http://synthesis:1111" {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (DEWEY_SYNTHESIS_ENDPOINT should take precedence)", got, "http://synthesis:1111")
+	}
+}
+
+func TestResolveSynthesisEndpoint_DefaultsWhenNothingSet(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "")
+
+	got := ResolveSynthesisEndpoint()
+	if got != embed.DefaultOllamaEndpoint {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (default)", got, embed.DefaultOllamaEndpoint)
+	}
+}
+
+func TestResolveSynthesisEndpoint_EmbeddingEndpointDoesNotAffect(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://embedding-only:5555")
+
+	got := ResolveSynthesisEndpoint()
+	if got != embed.DefaultOllamaEndpoint {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (DEWEY_EMBEDDING_ENDPOINT must NOT affect synthesis)", got, embed.DefaultOllamaEndpoint)
+	}
+}
+
+func TestResolveSynthesisEndpoint_NormalizesNoScheme(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "0.0.0.0:11434")
+	t.Setenv("OLLAMA_HOST", "")
+
+	got := ResolveSynthesisEndpoint()
+	want := "http://0.0.0.0:11434"
+	if got != want {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (should prepend http://)", got, want)
+	}
+}
+
+func TestResolveSynthesisEndpoint_PreservesHTTPS(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "https://synthesis.internal:11434")
+	t.Setenv("OLLAMA_HOST", "")
+
+	got := ResolveSynthesisEndpoint()
+	if got != "https://synthesis.internal:11434" {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (HTTPS should be preserved)", got, "https://synthesis.internal:11434")
+	}
+}
+
+func TestResolveSynthesisEndpoint_EmptyTreatedAsUnset(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "http://fallback:11434")
+
+	got := ResolveSynthesisEndpoint()
+	if got != "http://fallback:11434" {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (empty DEWEY_SYNTHESIS_ENDPOINT should fall back to OLLAMA_HOST)", got, "http://fallback:11434")
+	}
+}
+
+func TestResolveSynthesisEndpoint_OllamaHostNoSchemeNormalized(t *testing.T) {
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "0.0.0.0:11434")
+
+	got := ResolveSynthesisEndpoint()
+	want := "http://0.0.0.0:11434"
+	if got != want {
+		t.Errorf("ResolveSynthesisEndpoint() = %q, want %q (OLLAMA_HOST without scheme should be normalized)", got, want)
+	}
+}
+
+func TestReadSynthesisConfig_ConfigYAMLWinsOverSynthesisEndpoint(t *testing.T) {
+	dir := t.TempDir()
+	configYAML := `synthesis:
+  provider: ollama
+  model: llama3.2:3b
+  endpoint: http://config-host:11434
+`
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configYAML), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "http://env-host:11434")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	cfg := ReadSynthesisConfig(dir)
+	if cfg.Endpoint != "http://config-host:11434" {
+		t.Errorf("ReadSynthesisConfig().Endpoint = %q, want %q (config.yaml should win over DEWEY_SYNTHESIS_ENDPOINT)",
+			cfg.Endpoint, "http://config-host:11434")
 	}
 }

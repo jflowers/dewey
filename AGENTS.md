@@ -367,6 +367,16 @@ Vertex providers use `golang.org/x/oauth2/google` application-default credential
 
 When `OLLAMA_HOST` is set without a URL scheme (e.g., `0.0.0.0:11434`), `http://` is prepended automatically.
 
+**Synthesis endpoint resolution** (highest to lowest precedence):
+1. `config.yaml` `synthesis.endpoint` (per-vault, then global)
+2. `DEWEY_SYNTHESIS_ENDPOINT` env var (app-specific override)
+3. `OLLAMA_HOST` env var (ecosystem-standard fallback)
+4. `http://localhost:11434` (default)
+
+Note: Unlike embedding (where the env var overrides config.yaml), the synthesis path gives `config.yaml` highest precedence. Env vars are consulted only when `config.yaml` does not specify a `synthesis` section. This asymmetry exists because `ReadSynthesisConfig()` checks config file values first and returns early, while the env var fallback chain (`ResolveSynthesisEndpoint()`) is only consulted for the legacy `compile_model` path and the env-only fallback.
+
+When `OLLAMA_HOST` or `DEWEY_SYNTHESIS_ENDPOINT` is set without a URL scheme (e.g., `0.0.0.0:11434`), `http://` is prepended automatically.
+
 **Chunk size limit resolution** (highest to lowest precedence):
 1. `DEWEY_CHUNK_MAX_CHARS` env var
 2. `config.yaml` `embedding.max_chunk_chars` (per-vault, then global)

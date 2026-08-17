@@ -3,10 +3,37 @@ package llm
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/unbound-force/dewey/v3/embed"
 	"gopkg.in/yaml.v3"
 )
+
+// ResolveSynthesisEndpoint resolves the Ollama endpoint for synthesis
+// from environment variables with the following precedence (highest to lowest):
+//  1. DEWEY_SYNTHESIS_ENDPOINT (app-specific override)
+//  2. OLLAMA_HOST (ecosystem standard)
+//  3. embed.DefaultOllamaEndpoint constant
+//
+// If the resolved value has no URL scheme (no "://"), "http://" is prepended.
+// Empty strings are treated as unset.
+func ResolveSynthesisEndpoint() string {
+	if ep := os.Getenv("DEWEY_SYNTHESIS_ENDPOINT"); ep != "" {
+		return normalizeSynthesisEndpoint(ep)
+	}
+	if host := os.Getenv("OLLAMA_HOST"); host != "" {
+		return normalizeSynthesisEndpoint(host)
+	}
+	return embed.DefaultOllamaEndpoint
+}
+
+// normalizeSynthesisEndpoint prepends "http://" if the endpoint has no URL scheme.
+func normalizeSynthesisEndpoint(ep string) string {
+	if !strings.Contains(ep, "://") {
+		return "http://" + ep
+	}
+	return ep
+}
 
 // globalConfigDir returns the path to the global dewey config directory.
 // Uses $XDG_CONFIG_HOME/dewey if set, otherwise ~/.config/dewey.
@@ -82,14 +109,10 @@ func ReadSynthesisConfig(deweyDir string) ProviderConfig {
 
 	// Check per-vault legacy compile_model.
 	if cfg != nil && cfg.CompileModel != "" {
-		endpoint := os.Getenv("DEWEY_EMBEDDING_ENDPOINT")
-		if endpoint == "" {
-			endpoint = embed.DefaultOllamaEndpoint
-		}
 		return ProviderConfig{
 			Provider: "ollama",
 			Model:    cfg.CompileModel,
-			Endpoint: endpoint,
+			Endpoint: ResolveSynthesisEndpoint(),
 		}
 	}
 
@@ -114,13 +137,9 @@ func synthConfigFromEnv() ProviderConfig {
 	if model == "" {
 		return ProviderConfig{}
 	}
-	endpoint := os.Getenv("DEWEY_EMBEDDING_ENDPOINT")
-	if endpoint == "" {
-		endpoint = embed.DefaultOllamaEndpoint
-	}
 	return ProviderConfig{
 		Provider: "ollama",
 		Model:    model,
-		Endpoint: endpoint,
+		Endpoint: ResolveSynthesisEndpoint(),
 	}
 }
