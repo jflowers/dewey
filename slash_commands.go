@@ -33,6 +33,7 @@ Just talked to the team — we're switching to PostgreSQL.
 [paste a long Slack conversation or meeting transcript]
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 ### 1. Parse Input
@@ -81,6 +82,7 @@ list with tag/category for each. Wait for confirmation.
 ### 5. Post-Store
 
 Display the returned identity and suggest /dewey-compile.
+</protect>
 `,
 
 	"dewey-index.md": `---
@@ -102,6 +104,7 @@ disk, GitHub, web, and code sources without leaving the OpenCode session.
 /dewey-index disk-website
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 Call the Dewey MCP tool ` + "`index`" + ` to re-index configured sources.
@@ -114,6 +117,7 @@ index all configured sources.
 
 Display the returned summary showing sources processed, pages
 new/changed/deleted, embeddings generated, and elapsed time.
+</protect>
 `,
 
 	"dewey-reindex.md": `---
@@ -134,6 +138,7 @@ index appears stale or corrupted.
 /dewey-reindex
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 **Warning**: This deletes all external source content and rebuilds
@@ -143,6 +148,7 @@ Call the Dewey MCP tool ` + "`reindex`" + ` with no parameters.
 
 Display the returned summary showing pages deleted, sources
 re-indexed, new page counts, and elapsed time.
+</protect>
 `,
 
 	"dewey-compile.md": `---
@@ -163,12 +169,14 @@ and produces current-state articles with history.
 /dewey-compile
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 Call the Dewey MCP tool ` + "`compile`" + ` to synthesize stored learnings.
 
 Display the returned summary showing topics compiled, articles
 generated, and elapsed time.
+</protect>
 `,
 
 	"dewey-curate.md": `---
@@ -191,11 +199,13 @@ knowledge files with quality flags and confidence scores.
 /dewey-curate --force
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 1. Call the ` + "`curate`" + ` MCP tool
 2. If the tool returns extraction prompts (no local LLM), perform synthesis
 3. Report the results: files created, quality flags, confidence distribution
+</protect>
 `,
 
 	"dewey-lint.md": `---
@@ -216,6 +226,7 @@ uncompiled learnings, embedding gaps, and potential contradictions.
 /dewey-lint --fix
 ` + "```" + `
 
+<protect>
 ## Instructions
 
 Call the Dewey MCP tool ` + "`lint`" + ` to scan for quality issues.
@@ -225,5 +236,6 @@ mechanical issues (regenerate missing embeddings).
 
 Display the returned report showing findings and remediation
 suggestions.
+</protect>
 `,
 }
