@@ -27,11 +27,13 @@ The synthesis provider MUST support a dedicated `DEWEY_SYNTHESIS_ENDPOINT` envir
 
 ### Requirement: Synthesis endpoint fallback chain
 
-The synthesis endpoint resolution MUST follow this precedence chain (highest to lowest):
+When `config.yaml` does not specify a `synthesis.endpoint` value, the synthesis endpoint resolution MUST follow this env var fallback chain (highest to lowest):
 
 1. `DEWEY_SYNTHESIS_ENDPOINT` env var
 2. `OLLAMA_HOST` env var (ecosystem-standard fallback)
 3. `http://localhost:11434` (default)
+
+Note: This chain is used by `ResolveSynthesisEndpoint()`. When `config.yaml` specifies `synthesis.endpoint`, it takes precedence over all env vars (see MODIFIED requirement below).
 
 #### Scenario: OLLAMA_HOST fallback for synthesis
 
@@ -76,6 +78,13 @@ When `DEWEY_SYNTHESIS_ENDPOINT` or `OLLAMA_HOST` is set without a URL scheme (e.
 - **WHEN** `ReadSynthesisConfig()` resolves the synthesis endpoint
 - **THEN** the resolved endpoint MUST be `http://fallback:11434`
 
+#### Scenario: OLLAMA_HOST without scheme normalized for synthesis
+
+- **GIVEN** `DEWEY_SYNTHESIS_ENDPOINT` is not set
+- **AND** `OLLAMA_HOST` is set to `0.0.0.0:11434`
+- **WHEN** `ReadSynthesisConfig()` resolves the synthesis endpoint
+- **THEN** the resolved endpoint MUST be `http://0.0.0.0:11434`
+
 ### Requirement: Both config paths use new resolver
 
 Both synthesis config paths — the legacy `compile_model` path and the `synthConfigFromEnv()` fallback — MUST use `ResolveSynthesisEndpoint()` for endpoint resolution.
@@ -108,6 +117,15 @@ The synthesis endpoint MUST be resolved with the following precedence (highest t
 Previously: The synthesis endpoint was resolved using `DEWEY_EMBEDDING_ENDPOINT` instead of a dedicated env var, and had no `OLLAMA_HOST` fallback.
 
 Note: `config.yaml` takes highest precedence because it is the most explicit, user-intentional configuration. Env vars serve as the fallback for config-file-less deployments (CI, containers).
+
+Note: Unlike the embedding path (where `DEWEY_EMBEDDING_ENDPOINT` env var overrides `config.yaml`), the synthesis path gives `config.yaml` highest precedence. This asymmetry exists because `ReadSynthesisConfig()` checks config file values first and returns early, while the env var fallback chain (`ResolveSynthesisEndpoint()`) is only consulted when `config.yaml` does not specify a synthesis section. Task 3.1 must document this difference explicitly.
+
+#### Scenario: config.yaml synthesis.endpoint wins over DEWEY_SYNTHESIS_ENDPOINT
+
+- **GIVEN** `config.yaml` has `synthesis.endpoint: http://config-host:11434`
+- **AND** `DEWEY_SYNTHESIS_ENDPOINT` is set to `http://env-host:11434`
+- **WHEN** `ReadSynthesisConfig()` is called
+- **THEN** the resolved endpoint MUST be `http://config-host:11434`
 
 ## REMOVED Requirements
 
