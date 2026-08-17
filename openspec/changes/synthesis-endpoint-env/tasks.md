@@ -33,3 +33,4 @@
 - [x] 4.2 Verify constitution alignment: Composability First (independent endpoint config), Observable Quality (env var name matches behavior), Testability (all scenarios covered by tests).
 
 <!-- spec-review: passed -->
+<!-- code-review: passed -->
