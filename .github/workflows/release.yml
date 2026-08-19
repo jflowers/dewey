@@ -24,19 +24,16 @@ on:
         description: 'Release tag (e.g., v0.15.0)'
         required: true
         type: string
-      # Emergency escape hatches — use only for re-runs after partial
-      # failures or when a specific preflight check is known to be
-      # inapplicable. All default to false (safe path).
       skip_semver_check:
-        description: 'Skip semver ordering verification (e.g., re-tagging after a failed release)'
+        description: 'Skip semver ordering verification'
         type: boolean
         default: false
       skip_ci_checks:
-        description: 'Skip CI check verification on HEAD (e.g., re-run after GoReleaser failure where CI already passed)'
+        description: 'Skip CI check verification on HEAD'
         type: boolean
         default: false
       skip_unreleased_check:
-        description: 'Skip unreleased commits verification (e.g., re-releasing the same tag after partial failure)'
+        description: 'Skip unreleased commits verification'
         type: boolean
         default: false
 
@@ -65,6 +62,7 @@ jobs:
     uses: complytime/org-infra/.github/workflows/reusable_release_preflight.yml@0c784711926c9864f027ec565fd7c06a382d80f8 # v0.7.1
     with:
       tag: ${{ inputs.tag }}
+      allow_prerelease: true
       ci_checks: '["build-and-test", "MegaLinter"]'
       skip_semver_check: ${{ inputs.skip_semver_check }}
       skip_ci_checks: ${{ inputs.skip_ci_checks }}
@@ -92,16 +90,16 @@ jobs:
     permissions: {}
     timeout-minutes: 5
     outputs:
-      has_signing_secrets: ${{ steps.check.outputs.has_secrets }}
+      has_signing_secrets: ${{ steps.check.outputs.has_signing_secrets }}
     steps:
       - name: Check signing secrets
         id: check
         run: |
           set -euo pipefail
           if [ -n "$MACOS_SIGN_P12" ]; then
-            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+            echo "has_signing_secrets=true" >> "$GITHUB_OUTPUT"
           else
-            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "has_signing_secrets=false" >> "$GITHUB_OUTPUT"
           fi
         env:
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
@@ -123,13 +121,13 @@ jobs:
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
 
-          echo -n "$MACOS_SIGN_P12" | base64 --decode -o $RUNNER_TEMP/cert.p12
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security import $RUNNER_TEMP/cert.p12 -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
+          echo -n "$MACOS_SIGN_P12" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
         env:
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
           MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
@@ -137,7 +135,7 @@ jobs:
       - name: Prepare notary key
         run: |
           set -euo pipefail
-          echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o $RUNNER_TEMP/notary_key.p8
+          echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o "$RUNNER_TEMP/notary_key.p8"
         env:
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
 
@@ -315,3 +313,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Cleanup signing materials
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/notary_key.p8"
