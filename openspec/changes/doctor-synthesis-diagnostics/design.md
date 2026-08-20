@@ -57,7 +57,10 @@ cognitive load.
 
 - **Ollama provider**: Reuse `ensureOllama(synthEndpoint, false, nil)`
   for connectivity, then `OllamaSynthesizer.Available()` for model
-  availability. This is identical to the embedding pattern.
+  availability. This is identical to the embedding pattern. Note: when
+  embedding and synthesis use different Ollama endpoints, doctor
+  issues separate connectivity probes to each — the synthesis probe
+  uses the resolved synthesis endpoint, independent from embedding.
 - **Vertex provider**: Report config completeness (project, region,
   model set) without making a live API call. Use
   `NewSynthesizerFromConfig()` — if it returns an error, required
@@ -83,9 +86,11 @@ Like the embedding section which constructs
 inline. No new parameters to `runDoctorChecks()`.
 
 **Rationale**: Consistency with existing pattern. The `NoopSynthesizer`
-test double is available for integration tests but isn't needed here —
-tests use mock HTTP servers and environment variables, not injected
-dependencies.
+test double is available for integration tests but is not used for
+doctor tests — since doctor constructs the synthesizer inline,
+`NoopSynthesizer` cannot be injected. Tests control behavior via
+environment variables, config.yaml files, and mock HTTP servers,
+matching the embedding section's test pattern.
 
 ### D4: Section position
 
@@ -117,4 +122,7 @@ increase), so CRAPload impact is modest.
 
 **Mitigation**: Adequate test coverage for all branches (ollama
 reachable/unreachable, vertex configured/misconfigured, unconfigured).
+Consider filing a follow-up issue to extract section-level helper
+functions (e.g., `checkEmbeddingLayer()`, `checkSynthesisLayer()`) if
+the function exceeds ~400 lines.
 <!-- scaffolded by uf vdev -->

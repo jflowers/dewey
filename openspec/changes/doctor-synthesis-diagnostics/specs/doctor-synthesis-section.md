@@ -55,8 +55,18 @@ The section MUST report:
 - **GIVEN** a vault with synthesis configured as provider `vertex`
   but missing required fields (project or region)
 - **WHEN** the user runs `dewey doctor`
-- **THEN** the configuration check MUST report FAIL indicating which
-  required field is missing
+- **THEN** the configuration check MUST report FAIL with a message
+  identifying the specific missing field (e.g., "project" or "region")
+
+#### Scenario: Dual-endpoint setup shows independent probes
+
+- **GIVEN** a vault with embedding endpoint `http://emb:11434` and
+  synthesis configured as provider `ollama` with endpoint
+  `http://synth:11434`
+- **WHEN** the user runs `dewey doctor`
+- **THEN** the Embedding Layer section MUST show `http://emb:11434`
+- **AND** the Synthesis Layer section MUST show `http://synth:11434`
+- **AND** the connectivity checks MUST probe each endpoint independently
 
 #### Scenario: No synthesis provider configured
 
