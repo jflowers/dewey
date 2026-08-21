@@ -609,6 +609,100 @@ func TestRunDoctorChecks_ResolvesOllamaHostEndpoint(t *testing.T) {
 	}
 }
 
+// TestRunDoctorChecks_SynthesisOllamaProvider verifies the Synthesis Layer
+// section reports connectivity and model availability for an Ollama synthesis
+// provider, using an independent endpoint from the embedding layer.
+func TestRunDoctorChecks_SynthesisOllamaProvider(t *testing.T) {
+	// Create separate mock servers for embedding and synthesis to verify
+	// dual-endpoint independence (triage guidance #6).
+	embedSrv := newMockOllamaServer(`{"name":"granite-embedding:30m"}`)
+	defer embedSrv.Close()
+
+	synthModel := "llama3.2:3b"
+	synthSrv := newMockOllamaServer(`{"name":"` + synthModel + `"}`)
+	defer synthSrv.Close()
+
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, ".uf", "dewey")
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// Write config.yaml with ollama synthesis provider pointing to synthSrv.
+	configYAML := "synthesis:\n  provider: ollama\n  model: " + synthModel + "\n  endpoint: " + synthSrv.URL + "\n"
+	if err := os.WriteFile(filepath.Join(deweyDir, "config.yaml"), []byte(configYAML), 0o644); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+
+	// Set embedding endpoint to a different server.
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", embedSrv.URL)
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	// Verify Synthesis Layer section exists with the correct endpoint.
+	if !strings.Contains(output, "Synthesis Layer") {
+		t.Errorf("doctor should include Synthesis Layer section, got:\n%s", output)
+	}
+	if !strings.Contains(output, synthSrv.URL) {
+		t.Errorf("doctor synthesis section should show synthesis endpoint %q, got:\n%s", synthSrv.URL, output)
+	}
+	if !strings.Contains(output, synthModel) {
+		t.Errorf("doctor synthesis section should show model %q, got:\n%s", synthModel, output)
+	}
+
+	// Verify embedding endpoint is independent — embedding section shows embedSrv.URL.
+	if !strings.Contains(output, embedSrv.URL) {
+		t.Errorf("doctor embedding section should show embedding endpoint %q, got:\n%s", embedSrv.URL, output)
+	}
+}
+
+// TestRunDoctorChecks_SynthesisOllamaUnreachable verifies the Synthesis Layer
+// section reports WARN when the Ollama synthesis endpoint is unreachable and
+// skips the model availability check.
+func TestRunDoctorChecks_SynthesisOllamaUnreachable(t *testing.T) {
+	// Create a server and immediately close it to get an unreachable endpoint.
+	unreachableSrv := newMockOllamaServer("")
+	unreachableURL := unreachableSrv.URL
+	unreachableSrv.Close()
+
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, ".uf", "dewey")
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	synthModel := "llama3.2:3b"
+	configYAML := "synthesis:\n  provider: ollama\n  model: " + synthModel + "\n  endpoint: " + unreachableURL + "\n"
+	if err := os.WriteFile(filepath.Join(deweyDir, "config.yaml"), []byte(configYAML), 0o644); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "")
+	t.Setenv("OLLAMA_HOST", "")
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	if !strings.Contains(output, "Synthesis Layer") {
+		t.Errorf("doctor should include Synthesis Layer section, got:\n%s", output)
+	}
+	// Model check should be skipped when Ollama is not reachable.
+	if !strings.Contains(output, "skipped (ollama not reachable)") {
+		t.Errorf("doctor should report model check skipped when Ollama unreachable, got:\n%s", output)
+	}
+}
+
 // --- OllamaState tests (T011) ---
 
 // TestOllamaState_String verifies the String() method returns the correct

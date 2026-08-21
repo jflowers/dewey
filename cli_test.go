@@ -3156,6 +3156,11 @@ func TestDoctorCmd_WithInitializedVault(t *testing.T) {
 		t.Errorf("doctor should include Embedding Layer section, got:\n%s", output)
 	}
 
+	// Synthesis Layer section should exist.
+	if !strings.Contains(output, "Synthesis Layer") {
+		t.Errorf("doctor should include Synthesis Layer section, got:\n%s", output)
+	}
+
 	// Summary box should be present with correct counts.
 	if !strings.Contains(output, "✅") {
 		t.Errorf("doctor should include summary box with pass emoji, got:\n%s", output)
@@ -3170,6 +3175,171 @@ func TestDoctorCmd_WithInitializedVault(t *testing.T) {
 	}
 	if !strings.Contains(output, "failed") {
 		t.Errorf("doctor summary should contain 'failed' counter, got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_SynthesisUnconfigured verifies the Synthesis Layer section
+// reports "not configured (optional)" with PASS status when no synthesis
+// provider is configured.
+func TestDoctorCmd_SynthesisUnconfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+
+	// Clear any env vars that could configure synthesis.
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_GENERATION_MODEL", "")
+	t.Setenv("OLLAMA_HOST", "")
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	if !strings.Contains(output, "Synthesis Layer (not configured)") {
+		t.Errorf("doctor should show 'Synthesis Layer (not configured)', got:\n%s", output)
+	}
+	if !strings.Contains(output, "not configured (optional)") {
+		t.Errorf("doctor should show 'not configured (optional)' PASS, got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_SynthesisVertexConfigured verifies the Synthesis Layer section
+// reports config completeness for a Vertex provider without requiring GCP
+// credentials (passes without application-default credentials).
+func TestDoctorCmd_SynthesisVertexConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// Write config.yaml with vertex synthesis provider.
+	configYAML := `synthesis:
+  provider: vertex
+  model: claude-sonnet-4-6
+  project: my-test-project
+  region: us-east5
+`
+	if err := os.WriteFile(filepath.Join(deweyDir, "config.yaml"), []byte(configYAML), 0o644); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+
+	// Clear env vars to ensure config.yaml is the source.
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_GENERATION_MODEL", "")
+	t.Setenv("OLLAMA_HOST", "")
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	if !strings.Contains(output, "Synthesis Layer") {
+		t.Errorf("doctor should include Synthesis Layer section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "vertex") {
+		t.Errorf("doctor should mention vertex provider, got:\n%s", output)
+	}
+	if !strings.Contains(output, "claude-sonnet-4-6") {
+		t.Errorf("doctor should display synthesis model, got:\n%s", output)
+	}
+	if !strings.Contains(output, "project=my-test-project") {
+		t.Errorf("doctor should display project, got:\n%s", output)
+	}
+	if !strings.Contains(output, "region=us-east5") {
+		t.Errorf("doctor should display region, got:\n%s", output)
+	}
+
+	// Token safety: Vertex output MUST NOT contain credential-like strings
+	// (spec requirement: "Token safety in diagnostic output").
+	for _, forbidden := range []string{"Bearer", "token=", "key=", "credential"} {
+		if strings.Contains(output, forbidden) {
+			t.Errorf("doctor output MUST NOT contain credential-like string %q, got:\n%s", forbidden, output)
+		}
+	}
+}
+
+// TestDoctorCmd_SynthesisVertexMisconfigured verifies the Synthesis Layer
+// section reports FAIL for a Vertex provider with missing required fields.
+func TestDoctorCmd_SynthesisVertexMisconfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// Write config.yaml with vertex provider but missing project.
+	configYAML := `synthesis:
+  provider: vertex
+  model: claude-sonnet-4-6
+  region: us-east5
+`
+	if err := os.WriteFile(filepath.Join(deweyDir, "config.yaml"), []byte(configYAML), 0o644); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_GENERATION_MODEL", "")
+	t.Setenv("OLLAMA_HOST", "")
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	if !strings.Contains(output, "Synthesis Layer") {
+		t.Errorf("doctor should include Synthesis Layer section, got:\n%s", output)
+	}
+	// Should report FAIL with the specific missing field.
+	if !strings.Contains(output, "incomplete") {
+		t.Errorf("doctor should report incomplete config, got:\n%s", output)
+	}
+	if !strings.Contains(output, "project") {
+		t.Errorf("doctor should identify 'project' as missing field, got:\n%s", output)
+	}
+}
+
+// TestDoctorCmd_SynthesisUnknownProvider verifies the Synthesis Layer section
+// reports FAIL for an unknown provider type.
+func TestDoctorCmd_SynthesisUnknownProvider(t *testing.T) {
+	tmpDir := t.TempDir()
+	deweyDir := filepath.Join(tmpDir, deweyWorkspaceDir)
+	if err := os.MkdirAll(deweyDir, 0o755); err != nil {
+		t.Fatalf("mkdir .uf/dewey: %v", err)
+	}
+
+	// Isolate from developer's global config (~/.config/dewey/config.yaml).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	configYAML := `synthesis:
+  provider: badprovider
+  model: some-model
+`
+	if err := os.WriteFile(filepath.Join(deweyDir, "config.yaml"), []byte(configYAML), 0o644); err != nil {
+		t.Fatalf("write config.yaml: %v", err)
+	}
+
+	t.Setenv("DEWEY_SYNTHESIS_ENDPOINT", "")
+	t.Setenv("DEWEY_GENERATION_MODEL", "")
+	t.Setenv("OLLAMA_HOST", "")
+
+	var buf bytes.Buffer
+	runDoctorChecks(&buf, tmpDir)
+	output := buf.String()
+
+	if !strings.Contains(output, "unknown provider") {
+		t.Errorf("doctor should report unknown provider, got:\n%s", output)
+	}
+	if !strings.Contains(output, "badprovider") {
+		t.Errorf("doctor should include the unknown provider name, got:\n%s", output)
 	}
 }
 

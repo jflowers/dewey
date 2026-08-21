@@ -1517,6 +1517,70 @@ func runDoctorChecks(w io.Writer, vaultPath string) {
 	}
 	dp("\n")
 
+	// --- Synthesis Layer ---
+	synthCfg := llm.ReadSynthesisConfig(deweyDir)
+
+	switch synthCfg.Provider {
+	case "ollama", "":
+		if synthCfg.Model == "" {
+			// No synthesis configured — this is optional per Composability First.
+			section("Synthesis Layer (not configured)")
+			c.printCheck(w, "PASS", "synthesis", "not configured (optional)")
+		} else {
+			synthEndpoint := synthCfg.Endpoint
+			if synthEndpoint == "" {
+				synthEndpoint = llm.ResolveSynthesisEndpoint()
+			}
+			section(fmt.Sprintf("Synthesis Layer (%s via %s)", synthCfg.Model, synthEndpoint))
+
+			// Ollama connectivity check (autoStart=false — doctor is diagnostic-only).
+			synthOllamaState, _ := ensureOllama(synthEndpoint, false, nil)
+			synthReachable := false
+			// OllamaManaged is unreachable here because autoStart=false.
+			switch synthOllamaState {
+			case OllamaExternal:
+				synthReachable = true
+				c.printCheck(w, "PASS", "ollama", fmt.Sprintf("running (external) (%s)", synthEndpoint))
+			case OllamaUnavailable:
+				if _, lookErr := exec.LookPath("ollama"); lookErr == nil {
+					c.printCheck(w, "WARN", "ollama", "not running")
+					dp("     Fix: ollama serve\n")
+				} else {
+					c.printCheck(w, "PASS", "ollama", "not installed (optional)")
+				}
+			}
+
+			// Model availability.
+			if synthReachable {
+				synth := llm.NewOllamaSynthesizer(synthEndpoint, synthCfg.Model)
+				if synth.Available() {
+					c.printCheck(w, "PASS", "model", fmt.Sprintf("%s ready", synthCfg.Model))
+				} else {
+					c.printCheck(w, "FAIL", "model", fmt.Sprintf("%s not available", synthCfg.Model))
+					dp("     Fix: ollama pull %s\n", synthCfg.Model)
+				}
+			} else {
+				c.printCheck(w, "WARN", "model", fmt.Sprintf("%s skipped (ollama not reachable)", synthCfg.Model))
+			}
+		}
+
+	case "vertex":
+		section(fmt.Sprintf("Synthesis Layer (%s via vertex)", synthCfg.Model))
+
+		// Vertex config completeness — no live API calls (no GCP credentials required).
+		_, synthErr := llm.NewSynthesizerFromConfig(synthCfg)
+		if synthErr != nil {
+			c.printCheck(w, "FAIL", "config", fmt.Sprintf("incomplete: %s", synthErr))
+		} else {
+			c.printCheck(w, "PASS", "config", fmt.Sprintf("project=%s region=%s", synthCfg.Project, synthCfg.Region))
+		}
+
+	default:
+		section(fmt.Sprintf("Synthesis Layer (unknown provider: %s)", synthCfg.Provider))
+		c.printCheck(w, "FAIL", "provider", fmt.Sprintf("unknown provider %q (supported: ollama, vertex)", synthCfg.Provider))
+	}
+	dp("\n")
+
 	// --- MCP Server ---
 	section("MCP Server")
 
