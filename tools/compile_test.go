@@ -877,7 +877,7 @@ func TestCompile_CompiledArticleHistorySummaryUnicodeBoundaries(t *testing.T) {
 
 			expectedRow := fmt.Sprintf("| auth-1 | 2026-03-15 | decision | %s |", tt.expectedSummary)
 			var historyRow string
-			for row := range strings.SplitSeq(article, "\n") {
+			for _, row := range strings.Split(article, "\n") {
 				if strings.HasPrefix(row, "| auth-1 | 2026-03-15 | decision | ") {
 					historyRow = row
 					break
